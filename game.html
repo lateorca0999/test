@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>現代サッカークイズ王</title>
+    <style>
+        :root {
+            --primary-color: #008751;
+            --secondary-color: #f4f6f8;
+            --accent-color: #ffcc00;
+            --text-color: #333;
+            --correct-color: #28a745;
+            --incorrect-color: #dc3545;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+
+        body {
+            background-color: #121826;
+            color: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 16px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 480px;
+            background-color: #1e293b;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        /* 画面共通スタイル */
+        .screen {
+            display: none;
+        }
+
+        .screen.active {
+            display: block;
+        }
+
+        /* スタート画面 */
+        #start-screen {
+            text-align: center;
+            padding: 20px 0;
+        }
+
+        #start-screen h1 {
+            font-size: 26px;
+            margin-bottom: 12px;
+            color: var(--accent-color);
+        }
+
+        #start-screen p {
+            font-size: 14px;
+            color: #94a3b8;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+
+        /* クイズ画面 */
+        .quiz-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            font-size: 14px;
+            color: #94a3b8;
+        }
+
+        .question-box {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 24px;
+            line-height: 1.5;
+        }
+
+        .options-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .option-btn {
+            background-color: #334155;
+            color: #fff;
+            border: 2px solid transparent;
+            padding: 16px;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 500;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .option-btn:hover:not(:disabled) {
+            background-color: #475569;
+        }
+
+        .option-btn:disabled {
+            cursor: default;
+        }
+
+        .option-btn.correct {
+            background-color: rgba(40, 167, 69, 0.2);
+            border-color: var(--correct-color);
+            color: #a3e635;
+        }
+
+        .option-btn.incorrect {
+            background-color: rgba(220, 53, 69, 0.2);
+            border-color: var(--incorrect-color);
+            color: #fca5a5;
+        }
+
+        /* 解説エリア */
+        .explanation-box {
+            background-color: #0f172a;
+            border-left: 4px solid var(--accent-color);
+            padding: 12px;
+            border-radius: 4px;
+            font-size: 13px;
+            color: #cbd5e1;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        /* ボタン */
+        .btn-primary {
+            width: 100%;
+            background-color: #2563eb;
+            color: #fff;
+            border: none;
+            padding: 16px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .btn-primary:hover {
+            background-color: #1d4ed8;
+        }
+
+        /* リザルト画面 */
+        #result-screen {
+            text-align: center;
+            padding: 10px 0;
+        }
+
+        #result-screen h2 {
+            font-size: 24px;
+            margin-bottom: 16px;
+            color: var(--accent-color);
+        }
+
+        .score-display {
+            font-size: 48px;
+            font-weight: bold;
+            margin: 20px 0;
+            color: #38bdf8;
+        }
+
+        .rank-comment {
+            font-size: 15px;
+            color: #cbd5e1;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- スタート画面 -->
+        <div id="start-screen" class="screen active">
+            <h1>⚽ 現代サッカー<br>クイズ王</h1>
+            <p>近年の欧州CL、スター選手、戦術トレンドから厳選された全5問！<br>あなたは現代サッカーをどこまで知っているか？</p>
+            <button class="btn-primary" onclick="startQuiz()">ゲームスタート</button>
+        </div>
+
+        <!-- クイズ画面 -->
+        <div id="quiz-screen" class="screen">
+            <div class="quiz-header">
+                <span id="question-number">第 1 問 / 全 5 問</span>
+                <span id="score-counter">スコア: 0</span>
+            </div>
+            <div class="question-box" id="question-text">
+                ここに問題文が入ります。
+            </div>
+            <div class="options-list" id="options-list">
+                <!-- 選択肢が動的に入ります -->
+            </div>
+            <div class="explanation-box" id="explanation-box">
+                <!-- 解説が入ります -->
+            </div>
+            <button class="btn-primary" id="next-btn" style="display: none;" onclick="nextQuestion()">次の問題へ</button>
+        </div>
+
+        <!-- リザルト画面 -->
+        <div id="result-screen" class="screen">
+            <h2>結果発表</h2>
+            <p>あなたの正解数は...</p>
+            <div class="score-display"><span id="final-score">0</span> / 5 問</div>
+            <p class="rank-comment" id="rank-comment">ここにコメントが入ります。</p>
+            <button class="btn-primary" onclick="restartQuiz()">もう一度プレイする</button>
+        </div>
+    </div>
+
+    <script>
+        // クイズデータ（現代サッカー）
+        const quizData = [
+            {
+                question: "2023-24シーズンのUEFAチャンピオンズリーグ（CL）を制覇し、大会最多優勝記録を更新したクラブはどれ？",
+                options: ["マンチェスター・シティ", "レアル・マドリード", "バイエルン・ミュンヘン", "パリ・サンジェルマン"],
+                correct: 1,
+                explanation: "レアル・マドリードがドルトムントを破り、クラブ史上最多を更新する通算15回目のCL制覇を果たしました。"
+            },
+            {
+                question: "近年、監督たちが採用することが増えている「ポゼッション時にサイドバックが中央に絞ってボランチの位置に入る」戦術ポジションの通称はどれ？",
+                options: ["インサイド・ウイング", "インサイド・ハーフ", "インバーテッド・フルバック", "リベロ・ダ・マリア"],
+                correct: 2,
+                explanation: "「インバーテッド・フルバック（またはインバーテッド・サイドバック）」と呼ばれ、ペップ・グアルディオラ監督らによって現代サッカーの主流となっています。"
+            },
+            {
+                question: "2024年のバロンドール（男子最優秀選手賞）を受賞したスペイン代表/マンチェスター・シティのMFは誰？",
+                options: ["ケヴィン・デ・ブライネ", "ロドリ", "ジュード・ベリンガム", "フィル・フォーデン"],
+                correct: 1,
+                explanation: "マンチェスター・シティのプレミアリーグ4連覇や、スペイン代表でのEURO 2024優勝（MVP獲得）の立役者となったロドリが受賞しました。"
+            },
+            {
+                question: "2024年に開催された「EURO 2024（欧州選手権）」で優勝を果たした国はどこ？",
+                options: ["イングランド", "フランス", "スペイン", "ドイツ"],
+                correct: 2,
+                explanation: "スペイン代表が決勝でイングランド代表を2-1で破り、大会最多となる4度目の優勝を果たしました。"
+            },
+            {
+                question: "現代サッカーにおいて、GKに最も強く求められるようになった必須のスキルは何？",
+                options: ["ロングスローの飛距離", "正確な足元のビルドアップ能力", "パンチングの強さ", "ペナルティエリア外への飛び出し頻度"],
+                correct: 1,
+                explanation: "現代サッカーでは、GKもフィールドプレイヤーと同等の足元の技術（ビルドアップへの参加）が必須となっています。"
+            }
+        ];
+
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let answered = false;
+
+        const startScreen = document.getElementById("start-screen");
+        const quizScreen = document.getElementById("quiz-screen");
+        const resultScreen = document.getElementById("result-screen");
+        const questionNumberEl = document.getElementById("question-number");
+        const scoreCounterEl = document.getElementById("score-counter");
+        const questionTextEl = document.getElementById("question-text");
+        const optionsListEl = document.getElementById("options-list");
+        const explanationBoxEl = document.getElementById("explanation-box");
+        const nextBtnEl = document.getElementById("next-btn");
+        const finalScoreEl = document.getElementById("final-score");
+        const rankCommentEl = document.getElementById("rank-comment");
+
+        function startQuiz() {
+            currentQuestionIndex = 0;
+            score = 0;
+            startScreen.classList.remove("active");
+            quizScreen.classList.add("active");
+            loadQuestion();
+        }
+
+        function loadQuestion() {
+            answered = false;
+            explanationBoxEl.style.display = "none";
+            nextBtnEl.style.display = "none";
+            
+            const currentData = quizData[currentQuestionIndex];
+            questionNumberEl.textContent = `第 ${currentQuestionIndex + 1} 問 / 全 5 問`;
+            scoreCounterEl.textContent = `スコア: ${score}`;
+            questionTextEl.textContent = currentData.question;
+
+            optionsListEl.innerHTML = "";
+            currentData.options.forEach((option, index) => {
+                const btn = document.createElement("button");
+                btn.classList.add("option-btn");
+                btn.textContent = option;
+                btn.onclick = () => selectAnswer(index);
+                optionsListEl.appendChild(btn);
+            });
+        }
+
+        function selectAnswer(selectedIndex) {
+            if (answered) return;
+            answered = true;
+
+            const currentData = quizData[currentQuestionIndex];
+            const optionButtons = optionsListEl.querySelectorAll(".option-btn");
+
+            // 正誤判定
+            if (selectedIndex === currentData.correct) {
+                score++;
+                optionButtons[selectedIndex].classList.add("correct");
+                scoreCounterEl.textContent = `スコア: ${score}`;
+            } else {
+                optionButtons[selectedIndex].classList.add("incorrect");
+                optionButtons[currentData.correct].classList.add("correct");
+            }
+
+            // ボタンを無効化
+            optionButtons.forEach(btn => btn.disabled = true);
+
+            // 解説表示
+            explanationBoxEl.textContent = "💡 解説: " + currentData.explanation;
+            explanationBoxEl.style.display = "block";
+
+            // 次へボタンの制御
+            if (currentQuestionIndex < quizData.length - 1) {
+                nextBtnEl.textContent = "次の問題へ";
+            } else {
+                nextBtnEl.textContent = "結果を見る";
+            }
+            nextBtnEl.style.display = "block";
+        }
+
+        function nextQuestion() {
+            currentQuestionIndex++;
+            if (currentQuestionIndex < quizData.length) {
+                loadQuestion();
+            } else {
+                showResult();
+            }
+        }
+
+        function showResult() {
+            quizScreen.classList.remove("active");
+            resultScreen.classList.add("active");
+            finalScoreEl.textContent = score;
+
+            let comment = "";
+            if (score === 5) {
+                comment = "🏆 お見事！完璧な現代サッカー通です！戦術眼も最新トレンドもバッチリですね。";
+            } else if (score >= 3) {
+                comment = "🥈 なかなかのサッカー知識！普段からよく試合を観戦している証拠です。";
+            } else if (score >= 1) {
+                comment = "🥉 もう一歩！近年のCLやEUROを振り返ると、さらに面白くなりますよ！";
+            } else {
+                comment = "⚽ ここからがスタート！これから現代サッカーを深く楽しんでいきましょう！";
+            }
+            rankCommentEl.textContent = comment;
+        }
+
+        function restartQuiz() {
+            resultScreen.classList.remove("active");
+            startScreen.classList.add("active");
+        }
+    </script>
+</body>
+</html>
