@@ -2,367 +2,475 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>現代サッカークイズ王</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>レトロ疑似3Dレーサー</title>
     <style>
-        :root {
-            --primary-color: #008751;
-            --secondary-color: #f4f6f8;
-            --accent-color: #ffcc00;
-            --text-color: #333;
-            --correct-color: #28a745;
-            --incorrect-color: #dc3545;
-        }
-
         * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
         }
 
         body {
-            background-color: #121826;
+            background-color: #0b0f19;
             color: #fff;
+            font-family: 'Courier New', Courier, monospace;
             display: flex;
-            justify-content: center;
+            flex-direction: column;
             align-items: center;
+            justify-content: center;
             min-height: 100vh;
-            padding: 16px;
+            overflow: hidden;
+            touch-action: none;
         }
 
-        .container {
+        #game-container {
+            position: relative;
             width: 100%;
             max-width: 480px;
-            background-color: #1e293b;
-            border-radius: 16px;
-            padding: 24px;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+            height: 100vh;
+            max-height: 700px;
+            background: #111;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
         }
 
-        /* 画面共通スタイル */
-        .screen {
-            display: none;
+        /* HUD（スコア・スピードメーター） */
+        .hud {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 16px;
+            font-weight: bold;
+            text-shadow: 2px 2px #000;
+            z-index: 10;
+            pointer-events: none;
         }
 
-        .screen.active {
+        .hud-item {
+            background: rgba(0, 0, 0, 0.6);
+            padding: 6px 12px;
+            border-radius: 4px;
+            border: 1px solid #0ff;
+        }
+
+        canvas {
+            flex: 1;
+            width: 100%;
+            background: #000;
             display: block;
         }
 
-        /* スタート画面 */
-        #start-screen {
-            text-align: center;
-            padding: 20px 0;
-        }
-
-        #start-screen h1 {
-            font-size: 26px;
-            margin-bottom: 12px;
-            color: var(--accent-color);
-        }
-
-        #start-screen p {
-            font-size: 14px;
-            color: #94a3b8;
-            margin-bottom: 30px;
-            line-height: 1.6;
-        }
-
-        /* クイズ画面 */
-        .quiz-header {
+        /* スマホ用コントロールパネル */
+        .controls {
+            height: 140px;
+            background: #1e293b;
             display: flex;
-            justify-content: space-between;
+            justify-content: space-around;
             align-items: center;
-            margin-bottom: 20px;
-            font-size: 14px;
-            color: #94a3b8;
+            padding: 10px;
+            border-top: 2px solid #334155;
         }
 
-        .question-box {
-            font-size: 18px;
+        .ctrl-btn {
+            width: 90px;
+            height: 90px;
+            background: #3b82f6;
+            border: 4px solid #60a5fa;
+            border-radius: 50%;
+            color: white;
+            font-size: 28px;
             font-weight: bold;
-            margin-bottom: 24px;
-            line-height: 1.5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 6px 0 #1d4ed8;
+            cursor: pointer;
+            outline: none;
         }
 
-        .options-list {
+        .ctrl-btn:active {
+            transform: translateY(4px);
+            box-shadow: 0 2px 0 #1d4ed8;
+            background: #2563eb;
+        }
+
+        .ctrl-btn.boost {
+            background: #ef4444;
+            border-color: #f87171;
+            box-shadow: 0 6px 0 #b91c1c;
+            font-size: 20px;
+        }
+        .ctrl-btn.boost:active {
+            box-shadow: 0 2px 0 #b91c1c;
+            background: #dc2626;
+        }
+
+        /* オーバーレイ画面（スタート / ゲームオーバー） */
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(11, 15, 25, 0.85);
             display: flex;
             flex-direction: column;
-            gap: 12px;
-            margin-bottom: 20px;
-        }
-
-        .option-btn {
-            background-color: #334155;
-            color: #fff;
-            border: 2px solid transparent;
-            padding: 16px;
-            border-radius: 10px;
-            font-size: 15px;
-            font-weight: 500;
-            text-align: left;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        .option-btn:hover:not(:disabled) {
-            background-color: #475569;
-        }
-
-        .option-btn:disabled {
-            cursor: default;
-        }
-
-        .option-btn.correct {
-            background-color: rgba(40, 167, 69, 0.2);
-            border-color: var(--correct-color);
-            color: #a3e635;
-        }
-
-        .option-btn.incorrect {
-            background-color: rgba(220, 53, 69, 0.2);
-            border-color: var(--incorrect-color);
-            color: #fca5a5;
-        }
-
-        /* 解説エリア */
-        .explanation-box {
-            background-color: #0f172a;
-            border-left: 4px solid var(--accent-color);
-            padding: 12px;
-            border-radius: 4px;
-            font-size: 13px;
-            color: #cbd5e1;
-            margin-bottom: 20px;
-            display: none;
-        }
-
-        /* ボタン */
-        .btn-primary {
-            width: 100%;
-            background-color: #2563eb;
-            color: #fff;
-            border: none;
-            padding: 16px;
-            border-radius: 10px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-
-        .btn-primary:hover {
-            background-color: #1d4ed8;
-        }
-
-        /* リザルト画面 */
-        #result-screen {
+            align-items: center;
+            justify-content: center;
+            z-index: 20;
             text-align: center;
-            padding: 10px 0;
+            padding: 20px;
         }
 
-        #result-screen h2 {
-            font-size: 24px;
-            margin-bottom: 16px;
-            color: var(--accent-color);
+        .overlay h1 {
+            font-size: 32px;
+            color: #0ff;
+            margin-bottom: 10px;
+            text-shadow: 0 0 10px #0ff;
         }
 
-        .score-display {
-            font-size: 48px;
-            font-weight: bold;
-            margin: 20px 0;
-            color: #38bdf8;
-        }
-
-        .rank-comment {
-            font-size: 15px;
-            color: #cbd5e1;
-            margin-bottom: 30px;
+        .overlay p {
+            font-size: 14px;
+            color: #94a3b8;
+            margin-bottom: 25px;
             line-height: 1.6;
+        }
+
+        .start-btn {
+            background: #10b981;
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 20px;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 4px 0 #047857;
+        }
+        .start-btn:active {
+            transform: translateY(4px);
+            box-shadow: none;
         }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <!-- スタート画面 -->
-        <div id="start-screen" class="screen active">
-            <h1>⚽ 現代サッカー<br>クイズ王</h1>
-            <p>近年の欧州CL、スター選手、戦術トレンドから厳選された全5問！<br>あなたは現代サッカーをどこまで知っているか？</p>
-            <button class="btn-primary" onclick="startQuiz()">ゲームスタート</button>
+    <div id="game-container">
+        <!-- HUD -->
+        <div class="hud">
+            <div class="hud-item" id="hud-speed">SPEED: 0 km/h</div>
+            <div class="hud-item" id="hud-time">TIME: 45.0s</div>
         </div>
 
-        <!-- クイズ画面 -->
-        <div id="quiz-screen" class="screen">
-            <div class="quiz-header">
-                <span id="question-number">第 1 問 / 全 5 問</span>
-                <span id="score-counter">スコア: 0</span>
-            </div>
-            <div class="question-box" id="question-text">
-                ここに問題文が入ります。
-            </div>
-            <div class="options-list" id="options-list">
-                <!-- 選択肢が動的に入ります -->
-            </div>
-            <div class="explanation-box" id="explanation-box">
-                <!-- 解説が入ります -->
-            </div>
-            <button class="btn-primary" id="next-btn" style="display: none;" onclick="nextQuestion()">次の問題へ</button>
+        <!-- 画面キャンバス -->
+        <canvas id="gameCanvas" width="480" height="480"></canvas>
+
+        <!-- コントローラー -->
+        <div class="controls">
+            <button class="ctrl-btn" id="btn-left">◀</button>
+            <button class="ctrl-btn boost" id="btn-boost">BOOST</button>
+            <button class="ctrl-btn" id="btn-right">▶</button>
         </div>
 
-        <!-- リザルト画面 -->
-        <div id="result-screen" class="screen">
-            <h2>結果発表</h2>
-            <p>あなたの正解数は...</p>
-            <div class="score-display"><span id="final-score">0</span> / 5 問</div>
-            <p class="rank-comment" id="rank-comment">ここにコメントが入ります。</p>
-            <button class="btn-primary" onclick="restartQuiz()">もう一度プレイする</button>
+        <!-- スタート/ゲームオーバー画面 -->
+        <div id="overlay" class="overlay">
+            <h1 id="overlay-title">SUPER F-RACER</h1>
+            <p id="overlay-desc">左右ボタンでマシンを操作し、<br>コースアウトしないようにゴールを目指せ！<br>（PCは 矢印キー ＆ SPACE）</p>
+            <button class="start-btn" id="start-btn" onclick="startGame()">エンジン始動</button>
         </div>
     </div>
 
     <script>
-        // クイズデータ（現代サッカー）
-        const quizData = [
-            {
-                question: "2023-24シーズンのUEFAチャンピオンズリーグ（CL）を制覇し、大会最多優勝記録を更新したクラブはどれ？",
-                options: ["マンチェスター・シティ", "レアル・マドリード", "バイエルン・ミュンヘン", "パリ・サンジェルマン"],
-                correct: 1,
-                explanation: "レアル・マドリードがドルトムントを破り、クラブ史上最多を更新する通算15回目のCL制覇を果たしました。"
-            },
-            {
-                question: "近年、監督たちが採用することが増えている「ポゼッション時にサイドバックが中央に絞ってボランチの位置に入る」戦術ポジションの通称はどれ？",
-                options: ["インサイド・ウイング", "インサイド・ハーフ", "インバーテッド・フルバック", "リベロ・ダ・マリア"],
-                correct: 2,
-                explanation: "「インバーテッド・フルバック（またはインバーテッド・サイドバック）」と呼ばれ、ペップ・グアルディオラ監督らによって現代サッカーの主流となっています。"
-            },
-            {
-                question: "2024年のバロンドール（男子最優秀選手賞）を受賞したスペイン代表/マンチェスター・シティのMFは誰？",
-                options: ["ケヴィン・デ・ブライネ", "ロドリ", "ジュード・ベリンガム", "フィル・フォーデン"],
-                correct: 1,
-                explanation: "マンチェスター・シティのプレミアリーグ4連覇や、スペイン代表でのEURO 2024優勝（MVP獲得）の立役者となったロドリが受賞しました。"
-            },
-            {
-                question: "2024年に開催された「EURO 2024（欧州選手権）」で優勝を果たした国はどこ？",
-                options: ["イングランド", "フランス", "スペイン", "ドイツ"],
-                correct: 2,
-                explanation: "スペイン代表が決勝でイングランド代表を2-1で破り、大会最多となる4度目の優勝を果たしました。"
-            },
-            {
-                question: "現代サッカーにおいて、GKに最も強く求められるようになった必須のスキルは何？",
-                options: ["ロングスローの飛距離", "正確な足元のビルドアップ能力", "パンチングの強さ", "ペナルティエリア外への飛び出し頻度"],
-                correct: 1,
-                explanation: "現代サッカーでは、GKもフィールドプレイヤーと同等の足元の技術（ビルドアップへの参加）が必須となっています。"
-            }
-        ];
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
 
-        let currentQuestionIndex = 0;
-        let score = 0;
-        let answered = false;
+        // ゲーム状態
+        let gameState = "START"; // START, PLAYING, GAMEOVER, CLEAR
+        let scoreTime = 45.0;
+        let speed = 0;
+        let maxSpeed = 220;
+        let playerX = 0; // -1.0 (左) 〜 1.0 (右)
+        let playerRoadOffset = 0;
+        let cameraY = 0;
+        let trackLength = 15000; // コースの全長
+        let currentPos = 0;
+        
+        // 入力状態
+        const keys = { left: false, right: false, boost: false };
+        let touchLeft = false;
+        let touchRight = false;
+        let touchBoost = false;
 
-        const startScreen = document.getElementById("start-screen");
-        const quizScreen = document.getElementById("quiz-screen");
-        const resultScreen = document.getElementById("result-screen");
-        const questionNumberEl = document.getElementById("question-number");
-        const scoreCounterEl = document.getElementById("score-counter");
-        const questionTextEl = document.getElementById("question-text");
-        const optionsListEl = document.getElementById("options-list");
-        const explanationBoxEl = document.getElementById("explanation-box");
-        const nextBtnEl = document.getElementById("next-btn");
-        const finalScoreEl = document.getElementById("final-score");
-        const rankCommentEl = document.getElementById("rank-comment");
+        // コースのカーブデータ生成（簡易疑似3D用ライン）
+        const segmentLength = 200;
+        const totalSegments = Math.floor(trackLength / segmentLength);
+        const segments = [];
 
-        function startQuiz() {
-            currentQuestionIndex = 0;
-            score = 0;
-            startScreen.classList.remove("active");
-            quizScreen.classList.add("active");
-            loadQuestion();
-        }
-
-        function loadQuestion() {
-            answered = false;
-            explanationBoxEl.style.display = "none";
-            nextBtnEl.style.display = "none";
+        for (let i = 0; i < totalSegments; i++) {
+            let curve = 0;
+            // 特定の区間でカーブやうねりを作る
+            if (i > 15 && i < 35) curve = 1.5;
+            if (i > 45 && i < 70) curve = -2.0;
+            if (i > 80 && i < 110) curve = 1.8;
             
-            const currentData = quizData[currentQuestionIndex];
-            questionNumberEl.textContent = `第 ${currentQuestionIndex + 1} 問 / 全 5 問`;
-            scoreCounterEl.textContent = `スコア: ${score}`;
-            questionTextEl.textContent = currentData.question;
-
-            optionsListEl.innerHTML = "";
-            currentData.options.forEach((option, index) => {
-                const btn = document.createElement("button");
-                btn.classList.add("option-btn");
-                btn.textContent = option;
-                btn.onclick = () => selectAnswer(index);
-                optionsListEl.appendChild(btn);
+            segments.push({
+                index: i,
+                p1: { worldZ: i * segmentLength },
+                p2: { worldZ: (i + 1) * segmentLength },
+                curve: curve,
+                color: (Math.floor(i / 3) % 2 === 0) ? { road: "#333", grass: "#0b6623", rumble: "#fff" } : { road: "#444", grass: "#09521c", rumble: "#f00" }
             });
         }
 
-        function selectAnswer(selectedIndex) {
-            if (answered) return;
-            answered = true;
+        // イベントリスナー（キーボード）
+        window.addEventListener("keydown", (e) => {
+            if (e.key === "ArrowLeft") keys.left = true;
+            if (e.key === "ArrowRight") keys.right = true;
+            if (e.key === " ") keys.boost = true;
+        });
+        window.addEventListener("keyup", (e) => {
+            if (e.key === "ArrowLeft") keys.left = false;
+            if (e.key === "ArrowRight") keys.right = false;
+            if (e.key === " ") keys.boost = false;
+        });
 
-            const currentData = quizData[currentQuestionIndex];
-            const optionButtons = optionsListEl.querySelectorAll(".option-btn");
+        // スマホタッチイベント
+        const bindTouch = (id, keyName) => {
+            const btn = document.getElementById(id);
+            btn.addEventListener("touchstart", (e) => { e.preventDefault(); keys[keyName] = true; });
+            btn.addEventListener("touchend", (e) => { e.preventDefault(); keys[keyName] = false; });
+            btn.addEventListener("mousedown", (e) => { keys[keyName] = true; });
+            btn.addEventListener("mouseup", (e) => { keys[keyName] = false; });
+        };
+        bindTouch("btn-left", "left");
+        bindTouch("btn-right", "right");
+        bindTouch("btn-boost", "boost");
 
-            // 正誤判定
-            if (selectedIndex === currentData.correct) {
-                score++;
-                optionButtons[selectedIndex].classList.add("correct");
-                scoreCounterEl.textContent = `スコア: ${score}`;
-            } else {
-                optionButtons[selectedIndex].classList.add("incorrect");
-                optionButtons[currentData.correct].classList.add("correct");
-            }
-
-            // ボタンを無効化
-            optionButtons.forEach(btn => btn.disabled = true);
-
-            // 解説表示
-            explanationBoxEl.textContent = "💡 解説: " + currentData.explanation;
-            explanationBoxEl.style.display = "block";
-
-            // 次へボタンの制御
-            if (currentQuestionIndex < quizData.length - 1) {
-                nextBtnEl.textContent = "次の問題へ";
-            } else {
-                nextBtnEl.textContent = "結果を見る";
-            }
-            nextBtnEl.style.display = "block";
+        function startGame() {
+            gameState = "PLAYING";
+            scoreTime = 45.0;
+            speed = 0;
+            playerX = 0;
+            currentPos = 0;
+            document.getElementById("overlay").style.display = "none";
         }
 
-        function nextQuestion() {
-            currentQuestionIndex++;
-            if (currentQuestionIndex < quizData.length) {
-                loadQuestion();
-            } else {
-                showResult();
+        // メインゲームループ
+        let lastTime = performance.now();
+        function gameLoop(time) {
+            const dt = (time - lastTime) / 1000;
+            lastTime = time;
+
+            if (gameState === "PLAYING") {
+                update(dt);
+                render();
             }
+            requestAnimationFrame(gameLoop);
         }
 
-        function showResult() {
-            quizScreen.classList.remove("active");
-            resultScreen.classList.add("active");
-            finalScoreEl.textContent = score;
-
-            let comment = "";
-            if (score === 5) {
-                comment = "🏆 お見事！完璧な現代サッカー通です！戦術眼も最新トレンドもバッチリですね。";
-            } else if (score >= 3) {
-                comment = "🥈 なかなかのサッカー知識！普段からよく試合を観戦している証拠です。";
-            } else if (score >= 1) {
-                comment = "🥉 もう一歩！近年のCLやEUROを振り返ると、さらに面白くなりますよ！";
-            } else {
-                comment = "⚽ ここからがスタート！これから現代サッカーを深く楽しんでいきましょう！";
+        function update(dt) {
+            // 時間減少
+            scoreTime -= dt;
+            if (scoreTime <= 0) {
+                scoreTime = 0;
+                gameOver("タイムアップ！");
+                return;
             }
-            rankCommentEl.textContent = comment;
+
+            // 加減速とブースト
+            let acceleration = 80;
+            let currentMax = maxSpeed;
+
+            if (keys.boost) {
+                currentMax = 320;
+                acceleration = 160;
+                speed += acceleration * dt;
+            } else {
+                speed += 60 * dt; // 常時自動前進
+            }
+
+            if (speed > currentMax) speed = currentMax;
+            if (speed < 0) speed = 0;
+
+            // 移動距離の加算
+            currentPos += speed * dt;
+
+            // ゴール判定
+            if (currentPos >= trackLength) {
+                gameClear();
+                return;
+            }
+
+            // 現在のセグメントのカーブを取得
+            const currentSegIndex = Math.floor(currentPos / segmentLength) % totalSegments;
+            const currentSeg = segments[currentSegIndex];
+
+            // ステア操作
+            let steer = 2.0 * dt;
+            if (keys.left) {
+                playerX -= steer;
+            }
+            if (keys.right) {
+                playerX += steer;
+            }
+
+            // カーブによる遠心力でマシンが流される
+            playerX -= (currentSeg.curve * speed * dt) / 400;
+
+            // コースアウト判定（画面端を超えたら減速）
+            if (Math.abs(playerX) > 1.2) {
+                speed *= 0.92; // 芝生で減速
+                if (Math.abs(playerX) > 2.2) {
+                    gameOver("コースアウト大破！");
+                    return;
+                }
+            }
+            
+            // プレイヤー位置の制限
+            playerX = Math.max(-2.5, Math.min(2.5, playerX));
+
+            // HUD更新
+            document.getElementById("hud-speed").textContent = `SPEED: ${Math.floor(speed)} km/h`;
+            document.getElementById("hud-time").textContent = `TIME: ${scoreTime.toFixed(1)}s`;
         }
 
-        function restartQuiz() {
-            resultScreen.classList.remove("active");
-            startScreen.classList.add("active");
+        function gameOver(reason) {
+            gameState = "GAMEOVER";
+            document.getElementById("overlay-title").textContent = "GAME OVER";
+            document.getElementById("overlay-desc").textContent = reason + `<br>スコア到達度: ${Math.floor((currentPos/trackLength)*100)}%`;
+            document.getElementById("start-btn").textContent = "もう一度挑戦";
+            document.getElementById("overlay").style.display = "flex";
         }
+
+        function gameClear() {
+            gameState = "CLEAR";
+            document.getElementById("overlay-title").textContent = "GOAL!! 🎉";
+            document.getElementById("overlay-desc").textContent = `お見事完走！ 残りタイム: ${scoreTime.toFixed(1)}秒`;
+            document.getElementById("start-btn").textContent = "再挑戦";
+            document.getElementById("overlay").style.display = "flex";
+        }
+
+        // 描画処理（疑似3Dモード7風）
+        function render() {
+            // 背景（空と地面の色）
+            ctx.fillStyle = "#1b1931";
+            ctx.fillRect(0, 0, canvas.width, canvas.height / 2);
+            ctx.fillStyle = "#0c180c";
+            ctx.fillRect(0, canvas.height / 2, canvas.width, canvas.height / 2);
+
+            // 道路の描画（奥から手前へ台形を重ねる）
+            const baseSegmentIndex = Math.floor(currentPos / segmentLength);
+            const basePercent = (currentPos % segmentLength) / segmentLength;
+
+            let maxDrawDistance = 100;
+            let x = 0;
+            let dx = 0;
+
+            // 奥から手前に向かって描画
+            for (let n = maxDrawDistance; n > 0; n--) {
+                let segIndex = (baseSegmentIndex + n) % totalSegments;
+                let seg = segments[segIndex];
+
+                // 投影計算（パース）
+                let cameraZ = n * segmentLength - (basePercent * segmentLength);
+                if (cameraZ <= 0) continue;
+
+                let scale = 200 / cameraZ;
+                let screenX = canvas.width / 2 + (scale * (x - playerX * 400));
+                let screenY = canvas.height / 2 + scale * 100;
+                let screenW = scale * 800;
+
+                // 次のセグメントの投影
+                let nextSegIndex = (segIndex + 1) % totalSegments;
+                let nextScale = 200 / (cameraZ + segmentLength);
+                let nextScreenY = canvas.height / 2 + nextScale * 100;
+                let nextScreenW = nextScale * 800;
+
+                if (screenY >= nextScreenY) {
+                    // 台形ポリゴンの描画
+                    drawPolygon(
+                        screenX - screenW / 2, screenY,
+                        screenX + screenW / 2, screenY,
+                        canvas.width / 2 + (nextScale * (x + seg.curve * 50 - playerX * 400)) + nextScreenW / 2, nextScreenY,
+                        canvas.width / 2 + (nextScale * (x + seg.curve * 50 - playerX * 400)) - nextScreenW / 2, nextScreenY,
+                        seg.color.road
+                    );
+
+                    // ランブルストリップ（縁石）
+                    drawPolygon(
+                        screenX - screenW / 2 - screenW * 0.1, screenY,
+                        screenX - screenW / 2, screenY,
+                        canvas.width / 2 + (nextScale * (x + seg.curve * 50 - playerX * 400)) - nextScreenW / 2, nextScreenY,
+                        canvas.width / 2 + (nextScale * (x + seg.curve * 50 - playerX * 400)) - nextScreenW / 2 - nextScreenW * 0.1, nextScreenY,
+                        seg.color.rumble
+                    );
+                    drawPolygon(
+                        screenX + screenW / 2, screenY,
+                        screenX + screenW / 2 + screenW * 0.1, screenY,
+                        canvas.width / 2 + (nextScale * (x + seg.curve * 50 - playerX * 400)) + nextScreenW / 2 + nextScreenW * 0.1, nextScreenY,
+                        canvas.width / 2 + (nextScale * (x + seg.curve * 50 - playerX * 400)) + nextScreenW / 2, nextScreenY,
+                        seg.color.rumble
+                    );
+                }
+
+                x += dx;
+                dx += seg.curve;
+            }
+
+            // 自機（プレイヤーマシン）の描画
+            drawPlayerMachine();
+        }
+
+        function drawPolygon(x1, y1, x2, y2, x3, y3, x4, y4, color) {
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.lineTo(x3, y3);
+            ctx.lineTo(x4, y4);
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        function drawPlayerMachine() {
+            const px = canvas.width / 2;
+            const py = canvas.height - 70;
+
+            // マシンの影
+            ctx.fillStyle = "rgba(0,0,0,0.5)";
+            ctx.beginPath();
+            ctx.ellipse(px, py + 30, 45, 10, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 本体（スーパーファミコン風の立体ドットテイスト）
+            ctx.fillStyle = keys.boost ? "#ff4400" : "#00bcd4";
+            ctx.beginPath();
+            ctx.moveTo(px, py - 25);
+            ctx.lineTo(px - 50, py + 25);
+            ctx.lineTo(px + 50, py + 25);
+            ctx.closePath();
+            ctx.fill();
+
+            // コクピット
+            ctx.fillStyle = "#ffeb3b";
+            ctx.beginPath();
+            ctx.arc(px, py, 12, 0, Math.PI * 2);
+            ctx.fill();
+
+            // ウイング
+            ctx.fillStyle = "#37474f";
+            ctx.fillRect(px - 65, py + 15, 130, 8);
+        }
+
+        // ループ開始
+        requestAnimationFrame(gameLoop);
     </script>
 </body>
 </html>
